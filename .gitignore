@@ -1,0 +1,12 @@
+.vscode/
+.idea/
+log/
+tmp/
+test/
+vendor/
+docs/
+.markdownlint.json
+.env
+.env.development
+.env.staging
+.env.production

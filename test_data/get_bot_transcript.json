@@ -1,0 +1,16 @@
+[
+  {
+    "speaker": "string",
+    "speaker_id": 0,
+    "language": "string",
+    "words": [
+      {
+        "text": "string",
+        "start_timestamp": 0,
+        "end_timestamp": 0,
+        "language": "string",
+        "confidence": 0
+      }
+    ]
+  }
+]
