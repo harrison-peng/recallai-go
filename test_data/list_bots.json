@@ -5,7 +5,12 @@
   "results": [
     {
       "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-      "meeting_url": "string",
+      "meeting_url": {
+        "meeting_id": "01234545",
+        "meeting_password": "string",
+        "tk": null,
+        "platform": "zoom"
+      },
       "bot_name": "Meeting Notetaker",
       "join_at": "2025-03-18T10:13:10.433Z",
       "video_url": "string",
