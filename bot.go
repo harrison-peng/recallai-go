@@ -1,7 +1,6 @@
 package recallaigo
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -28,11 +27,12 @@ type BotService interface {
 	PauseRecording(ctx context.Context, botID string) (*Bot, error)
 	RequestRecordingPermission(ctx context.Context, botID string) (*Bot, error)
 	ResumeRecording(ctx context.Context, botID string) (*Bot, error)
-	SendChatMessage(ctx context.Context, botID string, message string) (*Bot, error)
+	SendChatMessage(ctx context.Context, botID string, request *SendChatMessageRequest) (*Bot, error)
 	GetSpeakerTimeline(ctx context.Context, botID string, params ...GetSpeakerTimelineParams) ([]SpeakerTimelineEntry, error)
 	StartRecording(ctx context.Context, botID string, request *StartRecordingRequest) (*Bot, error)
 	StopRecording(ctx context.Context, botID string) (*Bot, error)
 	GetBotTranscript(ctx context.Context, botID string, params ...GetBotTranscriptParams) ([]TranscriptEntry, error)
+	AnalyzeBotMedia(ctx context.Context, botId string, request *AnalyzeBotMediaRequest) (*AnalyzeBotMediaResponse, error)
 }
 
 type BotClient struct {
@@ -210,8 +210,23 @@ type StatusChange struct {
 	SubCode   string `json:"sub_code"`
 }
 
+type TranscriptionProvider string
+
+const (
+	TranscriptionProviderDeepgram               TranscriptionProvider = "deepgram"
+	TranscriptionProviderAssemblyAIAsyncChunked TranscriptionProvider = "assembly_ai_async_chunked"
+	TranscriptionProviderAssemblyAI             TranscriptionProvider = "assembly_ai"
+	TranscriptionProviderRev                    TranscriptionProvider = "rev"
+	TranscriptionProviderAWSTranscribe          TranscriptionProvider = "aws_transcribe"
+	TranscriptionProviderSpeechmatics           TranscriptionProvider = "speechmatics"
+	TranscriptionProviderGladia                 TranscriptionProvider = "gladia"
+	TranscriptionProviderGladiaV2               TranscriptionProvider = "gladia_v2"
+	TranscriptionProviderMeetingCaptions        TranscriptionProvider = "meeting_captions"
+	TranscriptionProviderNone                   TranscriptionProvider = "none"
+)
+
 type TranscriptionOptions struct {
-	Provider string `json:"provider"`
+	Provider TranscriptionProvider `json:"provider"`
 }
 
 type IncludeBotInRecording struct {
@@ -438,7 +453,7 @@ type SlackData struct {
 func (c *BotClient) ListBots(ctx context.Context, params *ListBotsParams) (*ListBotResponse, error) {
 	queryParams := buildQueryParams(params)
 
-	res, err := c.client.request(ctx, http.MethodGet, "bot", queryParams, nil)
+	res, err := c.client.request(ctx, http.MethodGet, "bot", queryParams, nil, apiVersionV1)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list bots: %w", err)
 	}
@@ -553,14 +568,25 @@ type CreateBotRequest struct {
 	Recording string            `json:"recording"`
 }
 
+func (r *CreateBotRequest) Validate() error {
+	if r.MeetingURL == "" {
+		return fmt.Errorf("meeting URL is required")
+	}
+	if r.BotName == "" {
+		return fmt.Errorf("bot name is required")
+	}
+
+	return nil
+}
+
 // CreateBot a new bot
 // see https://docs.recall.ai/reference/bot_create
 func (c *BotClient) CreateBot(ctx context.Context, request *CreateBotRequest) (*Bot, error) {
-	if err := validateCreateBotRequest(request); err != nil {
+	if err := request.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid request: %w", err)
 	}
 
-	res, err := c.client.request(ctx, http.MethodPost, "bot", nil, request)
+	res, err := c.client.request(ctx, http.MethodPost, "bot", nil, request, apiVersionV1)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create bot: %w", err)
 	}
@@ -572,17 +598,6 @@ func (c *BotClient) CreateBot(ctx context.Context, request *CreateBotRequest) (*
 	}
 
 	return &response, nil
-}
-
-func validateCreateBotRequest(request *CreateBotRequest) error {
-	if request.MeetingURL == "" {
-		return fmt.Errorf("meeting URL is required")
-	}
-	if request.BotName == "" {
-		return fmt.Errorf("bot name is required")
-	}
-
-	return nil
 }
 
 type ListChatMessagesParams struct {
@@ -615,7 +630,7 @@ func (c *BotClient) ListChatMessages(ctx context.Context, botID string, params .
 	}
 
 	// Make the request
-	res, err := c.client.request(ctx, http.MethodGet, path, queryParams, nil)
+	res, err := c.client.request(ctx, http.MethodGet, path, queryParams, nil, apiVersionV1)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list chat messages: %w", err)
 	}
@@ -637,7 +652,7 @@ func (c *BotClient) RetrieveBot(ctx context.Context, botID string) (*Bot, error)
 	path := fmt.Sprintf("bot/%s", botID)
 
 	// Make the request
-	res, err := c.client.request(ctx, http.MethodGet, path, nil, nil)
+	res, err := c.client.request(ctx, http.MethodGet, path, nil, nil, apiVersionV1)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve bot: %w", err)
 	}
@@ -658,14 +673,8 @@ func (c *BotClient) UpdateScheduledBot(ctx context.Context, botID string, reques
 	// Construct the URL path with the bot_id
 	path := fmt.Sprintf("bot/%s", botID)
 
-	// Encode the request data to JSON
-	body, err := json.Marshal(request)
-	if err != nil {
-		return nil, fmt.Errorf("failed to encode request data: %w", err)
-	}
-
 	// Make the request
-	res, err := c.client.request(ctx, http.MethodPatch, path, nil, bytes.NewReader(body))
+	res, err := c.client.request(ctx, http.MethodPatch, path, nil, request, apiVersionV1)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update scheduled bot: %w", err)
 	}
@@ -687,7 +696,7 @@ func (c *BotClient) DeleteScheduledBot(ctx context.Context, botID string) error 
 	path := fmt.Sprintf("bot/%s", botID)
 
 	// Make the request
-	res, err := c.client.request(ctx, http.MethodDelete, path, nil, nil)
+	res, err := c.client.request(ctx, http.MethodDelete, path, nil, nil, apiVersionV1)
 	if err != nil {
 		return fmt.Errorf("failed to delete scheduled bot: %w", err)
 	}
@@ -708,7 +717,7 @@ func (c *BotClient) DeleteBotMedia(ctx context.Context, botID string) error {
 	path := fmt.Sprintf("bot/%s/delete_media", botID)
 
 	// Make the request
-	res, err := c.client.request(ctx, http.MethodPost, path, nil, nil)
+	res, err := c.client.request(ctx, http.MethodPost, path, nil, nil, apiVersionV1)
 	if err != nil {
 		return fmt.Errorf("failed to delete bot media: %w", err)
 	}
@@ -753,7 +762,7 @@ func (c *BotClient) GetBotLogs(ctx context.Context, botID string) (*LogEntry, er
 	path := fmt.Sprintf("bot/%s/logs", botID)
 
 	// Make the request
-	res, err := c.client.request(ctx, http.MethodGet, path, nil, nil)
+	res, err := c.client.request(ctx, http.MethodGet, path, nil, nil, apiVersionV1)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get bot logs: %w", err)
 	}
@@ -792,7 +801,7 @@ func (c *BotClient) OutputAudio(ctx context.Context, botID string, request *Outp
 	path := fmt.Sprintf("bot/%s/output_audio", botID)
 
 	// Make the request with the provided OutputAudioRequest
-	res, err := c.client.request(ctx, http.MethodPost, path, nil, request)
+	res, err := c.client.request(ctx, http.MethodPost, path, nil, request, apiVersionV1)
 	if err != nil {
 		return nil, fmt.Errorf("failed to output audio: %w", err)
 	}
@@ -819,7 +828,7 @@ func (c *BotClient) StopOutputAudio(ctx context.Context, botID string) error {
 	path := fmt.Sprintf("bot/%s/output_audio", botID)
 
 	// Make the DELETE request to stop outputting audio
-	res, err := c.client.request(ctx, http.MethodDelete, path, nil, nil)
+	res, err := c.client.request(ctx, http.MethodDelete, path, nil, nil, apiVersionV1)
 	if err != nil {
 		return fmt.Errorf("failed to stop output audio: %w", err)
 	}
@@ -840,7 +849,7 @@ func (c *BotClient) OutputMedia(ctx context.Context, botID string, request *Outp
 	path := fmt.Sprintf("bot/%s/output_media", botID)
 
 	// Make the request with the provided OutputMediaRequest
-	res, err := c.client.request(ctx, http.MethodPost, path, nil, request)
+	res, err := c.client.request(ctx, http.MethodPost, path, nil, request, apiVersionV1)
 	if err != nil {
 		return nil, fmt.Errorf("failed to output media: %w", err)
 	}
@@ -867,7 +876,7 @@ func (c *BotClient) StopOutputMedia(ctx context.Context, botID string) error {
 	path := fmt.Sprintf("bot/%s/output_media", botID)
 
 	// Make the DELETE request to stop outputting media
-	res, err := c.client.request(ctx, http.MethodDelete, path, nil, nil)
+	res, err := c.client.request(ctx, http.MethodDelete, path, nil, nil, apiVersionV1)
 	if err != nil {
 		return fmt.Errorf("failed to stop output media: %w", err)
 	}
@@ -900,7 +909,7 @@ func (c *BotClient) StartScreenshare(ctx context.Context, botID string, request 
 	path := fmt.Sprintf("bot/%s/output_screenshare", botID)
 
 	// Make the POST request with the provided OutputVideoRequest
-	res, err := c.client.request(ctx, http.MethodPost, path, nil, request)
+	res, err := c.client.request(ctx, http.MethodPost, path, nil, request, apiVersionV1)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start screenshare: %w", err)
 	}
@@ -927,7 +936,7 @@ func (c *BotClient) StopScreenshare(ctx context.Context, botID string) error {
 	path := fmt.Sprintf("bot/%s/output_screenshare", botID)
 
 	// Make the DELETE request to stop screensharing
-	res, err := c.client.request(ctx, http.MethodDelete, path, nil, nil)
+	res, err := c.client.request(ctx, http.MethodDelete, path, nil, nil, apiVersionV1)
 	if err != nil {
 		return fmt.Errorf("failed to stop screenshare: %w", err)
 	}
@@ -948,7 +957,7 @@ func (c *BotClient) OutputVideo(ctx context.Context, botID string, request *Outp
 	path := fmt.Sprintf("bot/%s/output_video", botID)
 
 	// Make the POST request with the provided OutputVideoRequest
-	res, err := c.client.request(ctx, http.MethodPost, path, nil, request)
+	res, err := c.client.request(ctx, http.MethodPost, path, nil, request, apiVersionV1)
 	if err != nil {
 		return nil, fmt.Errorf("failed to output video: %w", err)
 	}
@@ -975,7 +984,7 @@ func (c *BotClient) StopOutputVideo(ctx context.Context, botID string) error {
 	path := fmt.Sprintf("bot/%s/output_video", botID)
 
 	// Make the DELETE request to stop outputting video
-	res, err := c.client.request(ctx, http.MethodDelete, path, nil, nil)
+	res, err := c.client.request(ctx, http.MethodDelete, path, nil, nil, apiVersionV1)
 	if err != nil {
 		return fmt.Errorf("failed to stop output video: %w", err)
 	}
@@ -996,7 +1005,7 @@ func (c *BotClient) PauseRecording(ctx context.Context, botID string) (*Bot, err
 	path := fmt.Sprintf("bot/%s/pause_recording", botID)
 
 	// Make the POST request to pause the recording
-	res, err := c.client.request(ctx, http.MethodPost, path, nil, nil)
+	res, err := c.client.request(ctx, http.MethodPost, path, nil, nil, apiVersionV1)
 	if err != nil {
 		return nil, fmt.Errorf("failed to pause recording: %w", err)
 	}
@@ -1024,7 +1033,7 @@ func (c *BotClient) RequestRecordingPermission(ctx context.Context, botID string
 	path := fmt.Sprintf("bot/%s/request_recording_permission", botID)
 
 	// Make the POST request to request recording permission
-	res, err := c.client.request(ctx, http.MethodPost, path, nil, nil)
+	res, err := c.client.request(ctx, http.MethodPost, path, nil, nil, apiVersionV1)
 	if err != nil {
 		return nil, fmt.Errorf("failed to request recording permission: %w", err)
 	}
@@ -1051,7 +1060,7 @@ func (c *BotClient) ResumeRecording(ctx context.Context, botID string) (*Bot, er
 	path := fmt.Sprintf("bot/%s/resume_recording", botID)
 
 	// Make the POST request to resume the recording
-	res, err := c.client.request(ctx, http.MethodPost, path, nil, nil)
+	res, err := c.client.request(ctx, http.MethodPost, path, nil, nil, apiVersionV1)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resume recording: %w", err)
 	}
@@ -1071,21 +1080,25 @@ func (c *BotClient) ResumeRecording(ctx context.Context, botID string) (*Bot, er
 	return &response, nil
 }
 
+type SendChatMessageRequest struct {
+	// The person or group that the message will be sent to. On non-Zoom platforms, "everyone" is currently the only supported option, meaning the message will be sent to everyone in the meeting.
+	To string `json:"to,omitempty"`
+
+	// The message content. Required, with a maximum length of 4096 characters.
+	Message string `json:"message"`
+
+	// Whether to pin the message. Defaults to false.
+	Pin bool `json:"pin,omitempty"`
+}
+
 // SendChatMessage sends a message in the meeting chat.
 // see https://docs.recall.ai/reference/bot_send_chat_message_create
-func (c *BotClient) SendChatMessage(ctx context.Context, botID string, message string) (*Bot, error) {
+func (c *BotClient) SendChatMessage(ctx context.Context, botID string, request *SendChatMessageRequest) (*Bot, error) {
 	// Construct the URL path with the bot_id
 	path := fmt.Sprintf("bot/%s/send_chat_message", botID)
 
-	// Create a request body with the message
-	body := map[string]string{"message": message}
-	bodyBytes, err := json.Marshal(body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal request body: %w", err)
-	}
-
 	// Make the POST request to send the chat message
-	res, err := c.client.request(ctx, http.MethodPost, path, nil, bytes.NewReader(bodyBytes))
+	res, err := c.client.request(ctx, http.MethodPost, path, nil, request, apiVersionV1)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send chat message: %w", err)
 	}
@@ -1111,9 +1124,9 @@ type GetSpeakerTimelineParams struct {
 
 // SpeakerTimelineEntry represents a single entry in the speaker timeline.
 type SpeakerTimelineEntry struct {
-	Name      string `json:"name"`
-	UserID    int    `json:"user_id"`
-	Timestamp int    `json:"timestamp"`
+	Name      string  `json:"name"`
+	UserID    int     `json:"user_id"`
+	Timestamp float64 `json:"timestamp"`
 }
 
 // GetSpeakerTimeline retrieves the speaker timeline produced by the bot.
@@ -1130,7 +1143,7 @@ func (c *BotClient) GetSpeakerTimeline(ctx context.Context, botID string, params
 	}
 
 	// Make the GET request to retrieve the speaker timeline
-	res, err := c.client.request(ctx, http.MethodGet, path, queryParams, nil)
+	res, err := c.client.request(ctx, http.MethodGet, path, queryParams, nil, apiVersionV1)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get speaker timeline: %w", err)
 	}
@@ -1167,7 +1180,7 @@ func (c *BotClient) StartRecording(ctx context.Context, botID string, request *S
 	path := fmt.Sprintf("bot/%s/start_recording", botID)
 
 	// Make the POST request with the provided StartRecordingRequest
-	res, err := c.client.request(ctx, http.MethodPost, path, nil, request)
+	res, err := c.client.request(ctx, http.MethodPost, path, nil, request, apiVersionV1)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start recording: %w", err)
 	}
@@ -1194,7 +1207,7 @@ func (c *BotClient) StopRecording(ctx context.Context, botID string) (*Bot, erro
 	path := fmt.Sprintf("bot/%s/stop_recording", botID)
 
 	// Make the POST request to stop recording
-	res, err := c.client.request(ctx, http.MethodPost, path, nil, nil)
+	res, err := c.client.request(ctx, http.MethodPost, path, nil, nil, apiVersionV1)
 	if err != nil {
 		return nil, fmt.Errorf("failed to stop recording: %w", err)
 	}
@@ -1230,8 +1243,8 @@ type TranscriptEntry struct {
 // WordDetail represents the details of a word in the transcript.
 type WordDetail struct {
 	Text           string  `json:"text"`
-	StartTimestamp int     `json:"start_timestamp"`
-	EndTimestamp   int     `json:"end_timestamp"`
+	StartTimestamp float64 `json:"start_timestamp"`
+	EndTimestamp   float64 `json:"end_timestamp"`
 	Language       string  `json:"language"`
 	Confidence     float64 `json:"confidence"`
 }
@@ -1249,7 +1262,7 @@ func (c *BotClient) GetBotTranscript(ctx context.Context, botID string, params .
 	}
 
 	// Make the GET request with the query parameters
-	res, err := c.client.request(ctx, http.MethodGet, path, queryParams, nil)
+	res, err := c.client.request(ctx, http.MethodGet, path, queryParams, nil, apiVersionV1)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get bot transcript: %w", err)
 	}
@@ -1269,10 +1282,410 @@ func (c *BotClient) GetBotTranscript(ctx context.Context, botID string, params .
 	return transcript, nil
 }
 
+type AnalyzeBotMediaRequest struct {
+	// Transcription requests for various services.
+	AssemblyAIAsyncTranscription   AssemblyAIAsyncTranscription   `json:"assemblyai_async_transcription"`
+	SpeechmaticsAsyncTranscription SpeechmaticsAsyncTranscription `json:"speechmatics_async_transcription"`
+	RevAsyncTranscription          RevAsyncTranscription          `json:"rev_async_transcription"`
+	DeepgramAsyncTranscription     DeepgramAsyncTranscription     `json:"deepgram_async_transcription"`
+}
+
+// AssemblyAIAsyncTranscription represents the request for asynchronous transcription using AssemblyAI.
+type AssemblyAIAsyncTranscription struct {
+	// Language specifies the language of the audio.
+	// Refer to: https://www.assemblyai.com/docs/speech-to-text/supported-languages
+	Language string `json:"language"`
+
+	// AudioEndAt indicates the timestamp to stop processing the audio.
+	// Refer to: https://www.assemblyai.com/docs/api-reference/transcripts/submit#request.body.audio_end_at
+	AudioEndAt int `json:"audio_end_at"`
+
+	// AudioStartFrom indicates the timestamp to start processing the audio.
+	// Refer to: https://www.assemblyai.com/docs/api-reference/transcripts/submit#request.body.audio_start_from
+	AudioStartFrom int `json:"audio_start_from"`
+
+	// AutoChapters enables automatic chapter detection in the transcription.
+	// Refer to: https://www.assemblyai.com/docs/api-reference/transcripts/submit#request.body.auto_chapters
+	AutoChapters bool `json:"auto_chapters"`
+
+	// AutoHighlights enables automatic highlights detection in the transcription.
+	// Refer to: https://www.assemblyai.com/docs/api-reference/transcripts/submit#request.body.auto_highlights
+	AutoHighlights bool `json:"auto_highlights"`
+
+	// BoostParam specifies the boost parameter to enhance transcription accuracy.
+	// Refer to: https://www.assemblyai.com/docs/api-reference/transcripts/submit#request.body.boost_param
+	BoostParam string `json:"boost_param"`
+
+	// ContentSafety enables analysis for potentially sensitive content.
+	// Refer to: https://www.assemblyai.com/docs/api-reference/transcripts/submit#request.body.content_safety
+	ContentSafety bool `json:"content_safety"`
+
+	// ContentSafetyConfidence sets the confidence threshold for content safety analysis.
+	// Refer to: https://www.assemblyai.com/docs/api-reference/transcripts/submit#request.body.content_safety_confidence
+	ContentSafetyConfidence int `json:"content_safety_confidence"`
+
+	// CustomSpelling allows configuration of custom spelling for specific words.
+	// Refer to: https://www.assemblyai.com/docs/api-reference/transcripts/submit#request.body.custom_spelling
+	CustomSpelling []map[string]string `json:"custom_spelling"`
+}
+
+// SpeechmaticsAsyncTranscription represents the request for asynchronous transcription using Speechmatics.
+type SpeechmaticsAsyncTranscription struct {
+	// Language specifies the language model to process the audio input.
+	// This field is required and normally specified as an ISO language code.
+	Language string `json:"language"`
+
+	// Domain requests a specialized model based on 'language' but optimized for a particular field.
+	// Examples include "finance" or "medical".
+	Domain string `json:"domain"`
+
+	// OutputLocale specifies the language locale to be used when generating the transcription output.
+	// Normally specified as an ISO language code.
+	OutputLocale string `json:"output_locale"`
+
+	// OperatingPoint specifies the operating point for the transcription.
+	// Enum: "standardenhanced"
+	OperatingPoint string `json:"operating_point"`
+
+	// AdditionalVocab is a list of custom words or phrases that should be recognized.
+	// Alternative pronunciations can be specified to aid recognition.
+	AdditionalVocab []map[string]string `json:"additional_vocab"`
+}
+
+// RevAsyncTranscription represents the request for asynchronous transcription using Rev.
+type RevAsyncTranscription struct {
+	// DetectLanguage enables automatic language detection.
+	// Docs: https://docs.rev.ai/api/asynchronous/reference/#operation/SubmitTranscriptionJob!ct=application/json&path=detect_language&t=request
+	DetectLanguage bool `json:"detect_language"`
+
+	// Language specifies the language model to process the audio input.
+	// Docs: https://docs.rev.ai/api/asynchronous/reference/#operation/SubmitTranscriptionJob!ct=application/json&path=language&t=request
+	Language string `json:"language"`
+
+	// SkipDiarization skips the speaker diarization process.
+	// Docs: https://docs.rev.ai/api/asynchronous/reference/#operation/SubmitTranscriptionJob!ct=application/json&path=skip_diarization&t=request
+	SkipDiarization bool `json:"skip_diarization"`
+
+	// SkipPostprocessing skips the post-processing step.
+	// Docs: https://docs.rev.ai/api/asynchronous/reference/#operation/SubmitTranscriptionJob!ct=application/json&path=skip_postprocessing&t=request
+	SkipPostprocessing bool `json:"skip_postprocessing"`
+
+	// SkipPunctuation skips the punctuation step in the transcription.
+	// Docs: https://docs.rev.ai/api/asynchronous/reference/#operation/SubmitTranscriptionJob!ct=application/json&path=skip_punctuation&t=request
+	SkipPunctuation bool `json:"skip_punctuation"`
+
+	// RemoveDisfluencies removes disfluencies from the transcription.
+	// Docs: https://docs.rev.ai/api/asynchronous/reference/#operation/SubmitTranscriptionJob!ct=application/json&path=remove_disfluencies&t=request
+	RemoveDisfluencies bool `json:"remove_disfluencies"`
+
+	// RemoveAtmospherics removes atmospheric sounds from the transcription.
+	// Docs: https://docs.rev.ai/api/asynchronous/reference/#operation/SubmitTranscriptionJob!ct=application/json&path=remove_atmospherics&t=request
+	RemoveAtmospherics bool `json:"remove_atmospherics"`
+
+	// FilterProfanity filters out profane language from the transcription.
+	// Docs: https://docs.rev.ai/api/asynchronous/reference/#operation/SubmitTranscriptionJob!ct=application/json&path=filter_profanity&t=request
+	FilterProfanity bool `json:"filter_profanity"`
+
+	// CustomVocabularyID specifies the ID of a custom vocabulary to use.
+	// Docs: https://docs.rev.ai/api/asynchronous/reference/#operation/SubmitTranscriptionJob!ct=application/json&path=custom_vocabulary_id&t=request
+	CustomVocabularyID string `json:"custom_vocabulary_id"`
+
+	// CustomVocabularies is a list of custom vocabulary strings to be used.
+	// Docs: https://docs.rev.ai/api/asynchronous/reference/#operation/SubmitTranscriptionJob!ct=application/json&path=custom_vocabularies&t=request
+	CustomVocabularies []string `json:"custom_vocabularies"`
+}
+
+// DeepgramAsyncTranscription represents the request for asynchronous transcription using Deepgram.
+type DeepgramAsyncTranscription struct {
+	// Tier specifies the tier of the transcription.
+	// Docs: https://developers.deepgram.com/documentation/features/tier/
+	Tier string `json:"tier"`
+
+	// Model specifies the model to use for the transcription.
+	// Docs: https://developers.deepgram.com/documentation/features/model/
+	Model string `json:"model"`
+
+	// Version specifies the version of the model to use.
+	// Docs: https://developers.deepgram.com/documentation/features/version/
+	Version string `json:"version"`
+
+	// Language specifies the language model to process the audio input.
+	// Docs: https://developers.deepgram.com/documentation/features/language/
+	Language string `json:"language"`
+
+	// DetectLanguage enables automatic language detection.
+	// Docs: https://developers.deepgram.com/documentation/features/detect-language/
+	DetectLanguage bool `json:"detect_language"`
+
+	// Punctuate enables automatic punctuation in the transcription.
+	// Docs: https://developers.deepgram.com/documentation/features/punctuate/
+	Punctuate bool `json:"punctuate"`
+
+	// ProfanityFilter filters out profane language from the transcription.
+	// Docs: https://developers.deepgram.com/documentation/features/profanity-filter/
+	ProfanityFilter bool `json:"profanity_filter"`
+
+	// Redact specifies the list of strings to redact from the transcription.
+	// Docs: https://developers.deepgram.com/documentation/features/redact/
+	Redact []string `json:"redact"`
+
+	// Diarize enables speaker diarization in the transcription.
+	// Docs: https://developers.deepgram.com/documentation/features/diarize/
+	Diarize bool `json:"diarize"`
+
+	// DiarizeVersion specifies the version of the diarization model to use.
+	// Docs: https://developers.deepgram.com/documentation/features/diarize/
+	DiarizeVersion string `json:"diarize_version"`
+
+	// SmartFormat enables smart formatting in the transcription.
+	// Docs: https://developers.deepgram.com/documentation/features/smart-format/
+	SmartFormat bool `json:"smart_format"`
+
+	// Numerals enables numeral formatting in the transcription.
+	// Docs: https://developers.deepgram.com/documentation/features/numerals/
+	Numerals bool `json:"numerals"`
+
+	// Search specifies the list of strings to search for in the transcription.
+	// Docs: https://developers.deepgram.com/documentation/features/search/
+	Search []string `json:"search"`
+
+	// Replace specifies the list of strings to replace in the transcription.
+	// Docs: https://developers.deepgram.com/documentation/features/replace/
+	Replace []string `json:"replace"`
+
+	// Keywords specifies the list of keywords to highlight in the transcription.
+	// Docs: https://developers.deepgram.com/documentation/features/keywords/
+	Keywords []string `json:"keywords"`
+
+	// Summarize enables summarization of the transcription.
+	// Docs: https://developers.deepgram.com/documentation/features/summarize/
+	Summarize bool `json:"summarize"`
+
+	// DetectTopics enables topic detection in the transcription.
+	// Docs: https://developers.deepgram.com/documentation/features/detect-topics/
+	DetectTopics bool `json:"detect_topics"`
+
+	// Tag enables tagging in the transcription.
+	// Docs: https://developers.deepgram.com/documentation/features/tag/
+	Tag bool `json:"tag"`
+
+	// CredentialID specifies the ID of the Deepgram credential to use for this transcription.
+	// If not specified, the default credential will be used.
+	CredentialID string `json:"credential_id"`
+}
+
+// GladiaV2AsyncTranscription represents the request for asynchronous transcription using Gladia V2.
+type GladiaV2AsyncTranscription struct {
+	// ContextPrompt is a string used for context in transcription.
+	// Docs: https://docs.gladia.io/chapters/speech-to-text-api/pages/speech-recognition#context-prompt
+	ContextPrompt string `json:"context_prompt"`
+
+	// CustomVocabulary can be a boolean or a list of vocabulary items.
+	// Docs: https://docs.gladia.io/chapters/speech-to-text-api/pages/speech-recognition#custom-vocabulary
+	CustomVocabulary interface{} `json:"custom_vocabulary"` // Can be bool or list
+
+	// CustomVocabularyConfig holds configuration for custom vocabulary.
+	CustomVocabularyConfig CustomVocabularyConfig `json:"custom_vocabulary_config"`
+
+	// EnableCodeSwitching allows detection of multiple languages.
+	// Docs: https://docs.gladia.io/chapters/speech-to-text-api/pages/speech-recognition#multiple-languages-detection-code-switching
+	EnableCodeSwitching bool `json:"enable_code_switching"`
+
+	// CodeSwitchingConfig holds configuration for guided code switching.
+	CodeSwitchingConfig CodeSwitchingConfig `json:"code_switching_config"`
+
+	// Subtitles enables the export of caption files.
+	// Docs: https://docs.gladia.io/chapters/speech-to-text-api/pages/speech-recognition#export-srt-or-vtt-caption-files
+	Subtitles bool `json:"subtitles"`
+
+	// SubtitlesConfig holds configuration for subtitles.
+	SubtitlesConfig SubtitlesConfig `json:"subtitles_config"`
+
+	// DiarizationConfig holds configuration for speaker diarization.
+	DiarizationConfig DiarizationConfig `json:"diarization_config"`
+
+	// TranslationConfig holds configuration for translation.
+	TranslationConfig TranslationConfig `json:"translation_config"`
+
+	// SummarizationConfig holds configuration for summarization.
+	SummarizationConfig SummarizationConfig `json:"summarization_config"`
+
+	// Moderation enables content moderation.
+	// Docs: https://docs.gladia.io/chapters/audio-intelligence/pages/moderation
+	Moderation bool `json:"moderation"`
+
+	// NamedEntityRecognition enables named entity recognition.
+	// Docs: https://docs.gladia.io/chapters/audio-intelligence/pages/named%20entity%20recognition
+	NamedEntityRecognition bool `json:"named_entity_recognition"`
+
+	// Chapterization enables chapterization of the transcription.
+	// Docs: https://docs.gladia.io/chapters/audio-intelligence/pages/chapterization
+	Chapterization bool `json:"chapterization"`
+
+	// NameConsistency ensures consistent naming in transcription.
+	// Docs: https://docs.gladia.io/chapters/speech-to-text-api/pages/speech-recognition#name-consistency
+	NameConsistency bool `json:"name_consistency"`
+
+	// CustomSpelling enables custom spelling in transcription.
+	// Docs: https://docs.gladia.io/chapters/speech-to-text-api/pages/speech-recognition#custom-spelling
+	CustomSpelling bool `json:"custom_spelling"`
+
+	// CustomSpellingConfig holds configuration for custom spelling.
+	// Docs: https://docs.gladia.io/chapters/speech-to-text-api/pages/speech-recognition#custom-spelling
+	CustomSpellingConfig string `json:"custom_spelling_config"`
+
+	// StructuredDataExtraction enables extraction of structured data.
+	// Docs: https://docs.gladia.io/chapters/audio-intelligence/pages/structured%20data%20extraction
+	StructuredDataExtraction bool `json:"structured_data_extraction"`
+
+	// StructuredDataExtractionConfig holds configuration for structured data extraction.
+	// Docs: https://docs.gladia.io/chapters/audio-intelligence/pages/structured%20data%20extraction
+	StructuredDataExtractionConfig string `json:"structured_data_extraction_config"`
+
+	// SentimentAnalysis enables sentiment analysis.
+	// Docs: https://docs.gladia.io/chapters/audio-intelligence/pages/sentiment%20analysis
+	SentimentAnalysis bool `json:"sentiment_analysis"`
+
+	// AudioToLLM enables audio to language model processing.
+	// Docs: https://docs.gladia.io/chapters/audio-intelligence/pages/audio%20to%20llm
+	AudioToLLM bool `json:"audio_to_llm"`
+
+	// AudioToLLMConfig holds configuration for audio to language model processing.
+	AudioToLLMConfig AudioToLLMConfig `json:"audio_to_llm_config"`
+
+	// CustomMetadata allows adding custom metadata to transcription.
+	// Docs: https://docs.gladia.io/chapters/speech-to-text-api/pages/speech-recognition#adding-custom-metadata
+	CustomMetadata string `json:"custom_metadata"`
+
+	// Sentences enables sentence-level transcription.
+	// Docs: https://docs.gladia.io/chapters/speech-to-text-api/pages/speech-recognition#sentences
+	Sentences bool `json:"sentences"`
+
+	// DisplayMode enables display mode in transcription.
+	// Docs: https://docs.gladia.io/api-reference/api-v2/Transcription/post-v2transcription
+	DisplayMode bool `json:"display_mode"`
+
+	// PunctuationEnhanced enables enhanced punctuation in transcription.
+	// Add comment: This field is used to enhance punctuation in the transcription.
+	PunctuationEnhanced bool `json:"punctuation_enhanced"`
+}
+
+// CustomVocabularyConfig holds configuration for custom vocabulary.
+type CustomVocabularyConfig struct {
+	// DefaultIntensity sets the default intensity for custom vocabulary.
+	// This field is a double.
+	DefaultIntensity float64 `json:"default_intensity"`
+
+	// Vocabulary is a list of custom vocabulary.
+	// This field is an array of objects.
+	Vocabulary []Vocabulary `json:"vocabulary"`
+}
+
+// Vocabulary represents a custom vocabulary item.
+type Vocabulary struct {
+	// Value to add to custom vocabulary.
+	// This field is required.
+	Value string `json:"value"`
+
+	// Intensity for this specific custom vocabulary item (0 to 1).
+	// This field is a double.
+	Intensity float64 `json:"intensity"`
+
+	// Pronunciations are optional pronunciations for this vocabulary item.
+	// This field is an array of strings.
+	Pronunciations []string `json:"pronunciations,omitempty"`
+
+	// Language is an optional language for this vocabulary item.
+	// Defaults to transcription language if not specified.
+	Language string `json:"language,omitempty"`
+}
+
+// CodeSwitchingConfig holds configuration for guided code switching.
+type CodeSwitchingConfig struct {
+	// Languages is a list of languages supported for code switching.
+	// This field is required and is an array of strings.
+	// Docs: https://docs.gladia.io/chapters/speech-to-text-api/pages/languages
+	Languages []string `json:"languages"`
+}
+
+// SubtitlesConfig holds configuration for subtitles.
+type SubtitlesConfig struct {
+	// Formats specifies the subtitle file formats to export.
+	// This field is required and is an array of strings.
+	// Docs: https://docs.gladia.io/chapters/speech-to-text-api/pages/speech-recognition#export-srt-or-vtt-caption-files
+	Formats []string `json:"formats"`
+}
+
+// DiarizationConfig holds configuration for speaker diarization.
+type DiarizationConfig struct {
+	// NumberOfSpeakers specifies the expected number of speakers in the audio.
+	// This field is an integer.
+	// Docs: https://docs.gladia.io/chapters/speech-to-text-api/pages/speaker-diarization#improving-diarization-accuracy
+	NumberOfSpeakers int `json:"number_of_speakers"`
+
+	// MinSpeakers specifies the minimum number of speakers to be detected.
+	// This field is an integer.
+	// Docs: https://docs.gladia.io/chapters/speech-to-text-api/pages/speaker-diarization#improving-diarization-accuracy
+	MinSpeakers int `json:"min_speakers"`
+
+	// MaxSpeakers specifies the maximum number of speakers to be detected.
+	// This field is an integer.
+	// Docs: https://docs.gladia.io/chapters/speech-to-text-api/pages/speaker-diarization#improving-diarization-accuracy
+	MaxSpeakers int `json:"max_speakers"`
+}
+
+// TranslationConfig holds configuration for translation.
+type TranslationConfig struct {
+	// TargetLanguages specifies the languages to which the audio should be translated.
+	// This field is required and is an array of strings.
+	// Docs: https://docs.gladia.io/chapters/speech-to-text-api/pages/languages
+	TargetLanguages []string `json:"target_languages"`
+
+	// Model specifies the translation model to be used.
+	// This field is a string.
+	// Docs: https://docs.gladia.io/chapters/audio-intelligence/pages/translation
+	Model string `json:"model"`
+}
+
+// SummarizationConfig holds configuration for summarization.
+type SummarizationConfig struct {
+	// Type specifies the type of summarization to be performed.
+	// This field is a string.
+	// Docs: https://docs.gladia.io/chapters/audio-intelligence/pages/summarization
+	Type string `json:"type"`
+}
+
+// AudioToLLMConfig holds configuration for audio to language model processing.
+type AudioToLLMConfig struct {
+	// Prompts specifies the prompts to be used for audio to language model processing.
+	// This field is required and is an array of strings.
+	// Docs: https://docs.gladia.io/chapters/audio-intelligence/pages/audio%20to%20llm
+	Prompts []string `json:"prompts"`
+}
+
+// AnalyzeBotMediaResponse represents the response for the AnalyzeBotMedia method.
+type AnalyzeBotMediaResponse struct {
+	JobId string `json:"job_id"`
+}
+
 // AnalyzeBotMedia runs analysis on the bot's media.
 // Not implemented yet
 // see https://docs.recall.ai/reference/bot_analyze_create
-// func (c *BotClient) AnalyzeBotMedia(ctx context.Context, botID string) (*AnalyzeBotMediaResponse, error) {
-// 	// TODO: Implement this method
-// 	return nil, nil
-// }
+func (c *BotClient) AnalyzeBotMedia(ctx context.Context, botId string, request *AnalyzeBotMediaRequest) (*AnalyzeBotMediaResponse, error) {
+	path := fmt.Sprintf("bot/%s/analyze", botId)
+
+	// Make the POST request to analyze bot media
+	res, err := c.client.request(ctx, http.MethodPost, path, nil, request, apiVersionV2Beta)
+	if err != nil {
+		return nil, fmt.Errorf("failed to analyze bot media: %w", err)
+	}
+	defer res.Body.Close()
+
+	// Decode the response into AnalyzeBotMediaResponse
+	var response AnalyzeBotMediaResponse
+	if err := json.NewDecoder(res.Body).Decode(&response); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return &response, nil
+}

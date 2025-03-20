@@ -1,7 +1,7 @@
 package recallaigo
 
 type Error struct {
-	Code   int    `json:"code"`
+	Code   string    `json:"code"`
 	Detail string `json:"detail"`
 }
 

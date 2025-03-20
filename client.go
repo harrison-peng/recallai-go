@@ -11,7 +11,12 @@ import (
 	"reflect"
 )
 
-const apiVersion = "v1"
+type apiVersion string
+
+const (
+	apiVersionV1     = "v1"
+	apiVersionV2Beta = "v2beta"
+)
 
 type Token string
 
@@ -44,7 +49,6 @@ type ClientOption func(*Client)
 type Client struct {
 	httpClient *http.Client
 	baseUrl    *url.URL
-	apiVersion string
 	Region     Region
 	Token      Token
 
@@ -55,7 +59,6 @@ func NewClient(token Token, opts ...ClientOption) *Client {
 	client := &Client{
 		httpClient: http.DefaultClient,
 		Token:      token,
-		apiVersion: apiVersion,
 		Region:     UsEast,
 	}
 
@@ -99,13 +102,9 @@ func WithRegion(region Region) ClientOption {
 	}
 }
 
-func (c *Client) request(ctx context.Context, method, urlStr string, queryParams map[string][]string, requestBody interface{}) (*http.Response, error) {
-	return c.requestImpl(ctx, method, urlStr, queryParams, requestBody, decodeClientError)
-}
-
-func (c *Client) requestImpl(ctx context.Context, method, urlStr string, queryParams map[string][]string, requestBody interface{}, errDecoder errJsonDecodeFunc) (*http.Response, error) {
+func (c *Client) request(ctx context.Context, method, urlStr string, queryParams map[string][]string, requestBody interface{}, apiVersion apiVersion) (*http.Response, error) {
 	// Construct the request URL
-	u, err := c.baseUrl.Parse(fmt.Sprintf("api/%s/%s", c.apiVersion, urlStr))
+	u, err := c.baseUrl.Parse(fmt.Sprintf("api/%s/%s", apiVersion, urlStr))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse request URL: %w", err)
 	}
@@ -154,16 +153,8 @@ func (c *Client) requestImpl(ctx context.Context, method, urlStr string, queryPa
 			return nil, fmt.Errorf("failed to read error response body: %w", err)
 		}
 
-		return nil, errDecoder(data)
+		return nil, fmt.Errorf("API request failed: %s", string(data))
 	}
 
 	return res, nil
-}
-
-func decodeClientError(data []byte) error {
-	var apiErr Error
-	if err := json.Unmarshal(data, &apiErr); err != nil {
-		return fmt.Errorf("failed to decode error response: %w", err)
-	}
-	return &apiErr
 }
