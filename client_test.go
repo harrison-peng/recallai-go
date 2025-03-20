@@ -41,11 +41,11 @@ func newMockedClient(t *testing.T, requestMockFile string, statusCode int) *http
 }
 
 func TestNewClient(t *testing.T) {
-	token := recallaigo.Token("test-token")
+	token := "test-token"
 
 	client := recallaigo.NewClient(token)
 
-	if client.Token != token {
+	if client.Token.String() != token {
 		t.Errorf("expected token %s, got %s", token, client.Token)
 	}
 
@@ -55,12 +55,12 @@ func TestNewClient(t *testing.T) {
 }
 
 func TestNewClientWithCustomRegion(t *testing.T) {
-	token := recallaigo.Token("test-token")
+	token := "test-token"
 	customRegion := recallaigo.UsWest
 
 	client := recallaigo.NewClient(token, recallaigo.WithRegion(customRegion))
 
-	if client.Token != token {
+	if client.Token.String() != token {
 		t.Errorf("expected token %s, got %s", token, client.Token)
 	}
 

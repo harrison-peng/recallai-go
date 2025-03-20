@@ -53,10 +53,10 @@ type Client struct {
 	Bot BotService
 }
 
-func NewClient(token Token, opts ...ClientOption) *Client {
+func NewClient(token string, opts ...ClientOption) *Client {
 	client := &Client{
 		httpClient: http.DefaultClient,
-		Token:      token,
+		Token:      Token(token),
 		Region:     UsEast,
 	}
 

@@ -25,7 +25,9 @@ First, please follow the [Getting Started Guide](https://docs.recall.ai/docs/get
 Import this library and initialize the API client using the obtained integration token.
 
 ```go
-import "github.com/harrison-peng/recallai-go"
+import (
+    recallaigo "github.com/harrison-peng/recallai-go"
+)
 
 client := recallaigo.NewClient("your_integration_token")
 ```
