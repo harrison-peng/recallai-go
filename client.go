@@ -41,8 +41,6 @@ func (r Region) BaseURL() string {
 	return fmt.Sprintf("https://%s.recall.ai", r)
 }
 
-type errJsonDecodeFunc func(data []byte) error
-
 // ClientOption to configure API client
 type ClientOption func(*Client)
 
