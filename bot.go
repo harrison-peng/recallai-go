@@ -107,7 +107,7 @@ type ListBotResponse struct {
 // Bot represents a bot with its configuration and state.
 type Bot struct {
 	ID string `json:"id"`
-	// The url of the meeting. For example, https://zoom.us/j/123?pwd=456. This field will be cleared a few days after the bot has joined a call.
+	// The url of the meeting.
 	MeetingURL MeetingURL `json:"meeting_url"`
 	// The name of the bot that will be displayed in the call.
 	// (Note: Authenticated Google Meet bots will use the Google account name and this field will be ignored.)
@@ -116,7 +116,12 @@ type Bot struct {
 	// The time at which the bot will join the call, formatted in ISO 8601.
 	// This field can only be read from scheduled bots that have not yet joined a call.
 	// Once a bot has joined a call, its join_at will be cleared.
-	JoinAt *string `json:"join_at,omitempty"`
+	JoinAt              *string              `json:"join_at,omitempty"`
+	VideoURL            string               `json:"video_url"`
+	MediaRetentionEnd   string               `json:"media_retention_end"`
+	StatusChanges       []StatusChange       `json:"status_changes"`
+	MeetingMetadata     MeetingMetadata      `json:"meeting_metadata"`
+	MeetingParticipants []MeetingParticipant `json:"meeting_participants"`
 	// The settings for real-time transcription.
 	RealTimeTranscription *RealTimeTranscription `json:"real_time_transcription,omitempty"`
 	// The settings for real-time media output.
@@ -129,6 +134,7 @@ type Bot struct {
 	RecordingModeOptions *RecordingModeOptions `json:"recording_mode_options,omitempty"`
 	// Settings to include the bot in the recording.
 	IncludeBotInRecording *IncludeBotInRecording `json:"include_bot_in_recording,omitempty"`
+	Recordings            []Recording            `json:"recordings"`
 	// Settings for the bot output media.
 	OutputMedia *OutputMedia `json:"output_media,omitempty"`
 	// Settings for the bot to output video. Image should be 16:9. Recommended resolution is 640x360.
@@ -141,13 +147,19 @@ type Bot struct {
 	// (BETA) Settings for the bot to automatically leave the meeting.
 	AutomaticLeave *AutomaticLeave `json:"automatic_leave,omitempty"`
 	// Configure bot variants per meeting platforms, e.g. {"zoom": "web_4_core"}.
-	Variant *Variant `json:"variants,omitempty"`
+	Variant          *Variant          `json:"variants,omitempty"`
+	CalendarMeetings []CalendarMeeting `json:"calendar_meetings"`
 	// Zoom specific parameters
 	Zoom *Zoom `json:"zoom,omitempty"`
 	// Google Meet specific parameters
 	GoogleMeet *GoogleMeet `json:"google_meet,omitempty"`
 	// Slack Authenticator specific parameters
-	Metadata map[string]string `json:"metadata,omitempty"`
+	SlackAuthenticator *SlackAuthenticator `json:"slack_authenticator,omitempty"`
+	// Slack Huddle Observer specific parameters
+	SlackHuddleObserver *SlackHuddleObserver `json:"slack_huddle_observer,omitempty"`
+	// Metadata for the bot, which can include additional information as key-value pairs.
+	Metadata  map[string]string `json:"metadata,omitempty"`
+	Recording string            `json:"recording"`
 }
 
 type MeetingURL struct {
@@ -522,12 +534,7 @@ type CreateBotRequest struct {
 	// The time at which the bot will join the call, formatted in ISO 8601.
 	// This field can only be read from scheduled bots that have not yet joined a call.
 	// Once a bot has joined a call, its join_at will be cleared.
-	JoinAt              *string              `json:"join_at,omitempty"`
-	VideoURL            string               `json:"video_url"`
-	MediaRetentionEnd   string               `json:"media_retention_end"`
-	StatusChanges       []StatusChange       `json:"status_changes"`
-	MeetingMetadata     MeetingMetadata      `json:"meeting_metadata"`
-	MeetingParticipants []MeetingParticipant `json:"meeting_participants"`
+	JoinAt *string `json:"join_at,omitempty"`
 	// The settings for real-time transcription.
 	RealTimeTranscription *RealTimeTranscription `json:"real_time_transcription,omitempty"`
 	// The settings for real-time media output.
@@ -553,8 +560,7 @@ type CreateBotRequest struct {
 	// (BETA) Settings for the bot to automatically leave the meeting.
 	AutomaticLeave *AutomaticLeave `json:"automatic_leave,omitempty"`
 	// Configure bot variants per meeting platforms, e.g. {"zoom": "web_4_core"}.
-	Variant          *Variant          `json:"variants,omitempty"`
-	CalendarMeetings []CalendarMeeting `json:"calendar_meetings"`
+	Variant *Variant `json:"variants,omitempty"`
 	// Zoom specific parameters
 	Zoom *Zoom `json:"zoom,omitempty"`
 	// Google Meet specific parameters
@@ -564,8 +570,7 @@ type CreateBotRequest struct {
 	// Slack Huddle Observer specific parameters
 	SlackHuddleObserver *SlackHuddleObserver `json:"slack_huddle_observer,omitempty"`
 	// Metadata for the bot, which can include additional information as key-value pairs.
-	Metadata  map[string]string `json:"metadata,omitempty"`
-	Recording string            `json:"recording"`
+	Metadata map[string]string `json:"metadata,omitempty"`
 }
 
 func (r *CreateBotRequest) Validate() error {
