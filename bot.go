@@ -12,7 +12,7 @@ type BotService interface {
 	CreateBot(ctx context.Context, request *CreateBotRequest) (*Bot, error)
 	ListChatMessages(ctx context.Context, botID string, params ...ListChatMessagesParams) (*ListMessagesResponse, error)
 	RetrieveBot(ctx context.Context, botID string) (*Bot, error)
-	UpdateScheduledBot(ctx context.Context, botID string, request *Bot) (*Bot, error)
+	UpdateScheduledBot(ctx context.Context, botID string, request *CreateBotRequest) (*Bot, error)
 	DeleteScheduledBot(ctx context.Context, botID string) error
 	DeleteBotMedia(ctx context.Context, botID string) error
 	GetBotLogs(ctx context.Context, botID string) (*LogEntry, error)
@@ -674,7 +674,7 @@ func (c *BotClient) RetrieveBot(ctx context.Context, botID string) (*Bot, error)
 
 // UpdateScheduledBot updates the schedule of a bot by its ID.
 // see https://docs.recall.ai/reference/bot_partial_update
-func (c *BotClient) UpdateScheduledBot(ctx context.Context, botID string, request *Bot) (*Bot, error) {
+func (c *BotClient) UpdateScheduledBot(ctx context.Context, botID string, request *CreateBotRequest) (*Bot, error) {
 	// Construct the URL path with the bot_id
 	path := fmt.Sprintf("bot/%s", botID)
 
