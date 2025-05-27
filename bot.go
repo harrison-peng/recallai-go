@@ -238,7 +238,132 @@ const (
 )
 
 type TranscriptionOptions struct {
-	Provider TranscriptionProvider `json:"provider"`
+	Provider                        TranscriptionProvider `json:"provider"`
+	UseSeparateStreamsWhenAvailable bool                  `json:"use_separate_streams_when_available"`
+	AWSTranscribe                   *AWSTranscribe        `json:"aws_transcribe,omitempty"`
+	AssemblyAI                      *AssemblyAI           `json:"assembly_ai,omitempty"`
+	Deepgram                        *Deepgram             `json:"deepgram,omitempty"`
+	Gladia                          *Gladia               `json:"gladia,omitempty"`
+	GladiaV2                        *GladiaV2             `json:"gladia_v2,omitempty"`
+	Rev                             *Rev                  `json:"rev,omitempty"`
+	Speechmatics                    *Speechmatics         `json:"speechmatics,omitempty"`
+}
+
+type AssemblyAI struct {
+	WordBoost                 []string `json:"word_boost"`
+	DisablePartialTranscripts bool     `json:"disable_partial_transcripts"`
+}
+
+type Deepgram struct {
+	Tier            string   `json:"tier"`
+	Model           string   `json:"model"`
+	Version         string   `json:"version"`
+	Language        string   `json:"language"`
+	Punctuate       bool     `json:"punctuate"`
+	FillerWords     bool     `json:"filler_words"`
+	Keyterm         []string `json:"keyterm"`
+	ProfanityFilter bool     `json:"profanity_filter"`
+	Redact          []string `json:"redact"`
+	Diarize         bool     `json:"diarize"`
+	DiarizeVersion  string   `json:"diarize_version"`
+	SmartFormat     bool     `json:"smart_format"`
+	Ner             bool     `json:"ner"`
+	Alternatives    int      `json:"alternatives"`
+	Numerals        bool     `json:"numerals"`
+	Search          []string `json:"search"`
+	Replace         []string `json:"replace"`
+	Keywords        []string `json:"keywords"`
+	InterimResults  bool     `json:"interim_results"`
+	Endpointing     int      `json:"endpointing"`
+	LogData         bool     `json:"log_data"`
+	MipOptOut       bool     `json:"mip_opt_out"`
+}
+
+type Gladia struct {
+	LanguageBehaviour string `json:"language_behaviour"`
+	Language          string `json:"language"`
+	TranscriptionHint string `json:"transcription_hint"`
+	Endpointing       int    `json:"endpointing"`
+	ModelType         string `json:"model_type"`
+	AudioEnhancer     bool   `json:"audio_enhancer"`
+}
+
+type GladiaV2 struct {
+	Model                             string   `json:"model"`
+	Endpointing                       float64  `json:"endpointing"`
+	MaximumDurationWithoutEndpointing float64  `json:"maximum_duration_without_endpointing"`
+	Languages                         []string `json:"languages"`
+	CodeSwitching                     bool     `json:"code_switching"`
+	AudioEnhancer                     bool     `json:"audio_enhancer"`
+	SpeechThreshold                   float64  `json:"speech_threshold"`
+	CustomVocabulary                  bool     `json:"custom_vocabulary"`
+	CustomVocabularyConfig            struct {
+		DefaultIntensity float64 `json:"default_intensity"`
+		Vocabulary       []struct {
+			Value          string   `json:"value"`
+			Intensity      float64  `json:"intensity"`
+			Pronunciations []string `json:"pronunciations"`
+			Language       string   `json:"language"`
+		} `json:"vocabulary"`
+		SentimentAnalysis  bool    `json:"sentiment_analysis"`
+		SentimentIntensity float64 `json:"sentiment_intensity"`
+		SentimentLabel     string  `json:"sentiment_label"`
+	} `json:"custom_vocabulary_config"`
+	Region string `json:"region"`
+}
+
+type Rev struct {
+	Language                  string  `json:"language"`
+	Metadata                  string  `json:"metadata"`
+	CustomVocabularyID        string  `json:"custom_vocabulary_id"`
+	FilterProfanity           bool    `json:"filter_profanity"`
+	RemoveDisfluencies        bool    `json:"remove_disfluencies"`
+	DeleteAfterSeconds        int     `json:"delete_after_seconds"`
+	DetailedPartials          bool    `json:"detailed_partials"`
+	StartTS                   float64 `json:"start_ts"`
+	MaxSegmentDurationSeconds int     `json:"max_segment_duration_seconds"`
+	Transcriber               string  `json:"transcriber"`
+	EnableSpeakerSwitch       bool    `json:"enable_speaker_switch"`
+	SkipPostprocessing        bool    `json:"skip_postprocessing"`
+	Priority                  string  `json:"priority"`
+}
+
+type Speechmatics struct {
+	Language        string `json:"language"`
+	AdditionalVocab []struct {
+		Content    string   `json:"content"`
+		SoundsLike []string `json:"sounds_like"`
+	} `json:"additional_vocab"`
+	Diarization              string `json:"diarization"`
+	SpeakerDiarizationConfig struct {
+		MaxSpeakers int `json:"max_speakers"`
+	} `json:"speaker_diarization_config"`
+	EnablePartials       bool    `json:"enable_partials"`
+	MaxDelay             float64 `json:"max_delay"`
+	MaxDelayMode         string  `json:"max_delay_mode"`
+	OutputLocale         string  `json:"output_locale"`
+	PunctuationOverrides struct {
+		PermittedMarks []string `json:"permitted_marks"`
+		Sensitivity    float64  `json:"sensitivity"`
+	} `json:"punctuation_overrides"`
+	OperatingPoint string `json:"operating_point"`
+	EnableEntities bool   `json:"enable_entities"`
+}
+
+type AWSTranscribe struct {
+	LanguageCode              string `json:"language_code,omitempty"`
+	ContentRedactionType      string `json:"content_redaction_type,omitempty"`
+	LanguageModelName         string `json:"language_model_name,omitempty"`
+	LanguageOptions           string `json:"language_options,omitempty"`
+	LanguageIdentification    bool   `json:"language_identification"`
+	IdentifyMultipleLanguages bool   `json:"identify_multiple_languages"`
+	PartialResultsStability   string `json:"partial_results_stability,omitempty"`
+	PiiEntityTypes            string `json:"pii_entity_types,omitempty"`
+	PreferredLanguage         string `json:"preferred_language,omitempty"`
+	ShowSpeakerLabel          bool   `json:"show_speaker_label"`
+	VocabularyFilterMethod    string `json:"vocabulary_filter_method,omitempty"`
+	VocabularyFilterNames     string `json:"vocabulary_filter_names,omitempty"`
+	VocabularyNames           string `json:"vocabulary_names,omitempty"`
 }
 
 type IncludeBotInRecording struct {
