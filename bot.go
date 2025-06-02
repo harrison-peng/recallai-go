@@ -457,14 +457,19 @@ type ReplayOnParticipantJoin struct {
 }
 
 type AutomaticLeave struct {
-	WaitingRoomTimeout               int              `json:"waiting_room_timeout"`
-	NooneJoinedTimeout               int              `json:"noone_joined_timeout"`
-	EveryoneLeftTimeout              int              `json:"everyone_left_timeout"`
-	InCallNotRecordingTimeout        int              `json:"in_call_not_recording_timeout"`
-	InCallRecordingTimeout           int              `json:"in_call_recording_timeout"`
-	RecordingPermissionDeniedTimeout int              `json:"recording_permission_denied_timeout"`
-	SilenceDetection                 SilenceDetection `json:"silence_detection"`
-	BotDetection                     BotDetection     `json:"bot_detection"`
+	WaitingRoomTimeout               int                  `json:"waiting_room_timeout"`
+	NooneJoinedTimeout               int                  `json:"noone_joined_timeout"`
+	EveryoneLeftTimeout              EveryoneLeftTimeout `json:"everyone_left_timeout"`
+	InCallNotRecordingTimeout        int                  `json:"in_call_not_recording_timeout"`
+	InCallRecordingTimeout           int                  `json:"in_call_recording_timeout"`
+	RecordingPermissionDeniedTimeout int                  `json:"recording_permission_denied_timeout"`
+	SilenceDetection                 SilenceDetection     `json:"silence_detection"`
+	BotDetection                     BotDetection         `json:"bot_detection"`
+}
+
+type EveryoneLeftTimeout struct {
+	Timeout       int  `json:"timeout"`
+	ActivateAfter *int `json:"activate_after"`
 }
 
 type SilenceDetection struct {
