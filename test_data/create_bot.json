@@ -292,9 +292,7 @@
   "automatic_leave": {
     "waiting_room_timeout": 1200,
     "noone_joined_timeout": 1200,
-    "everyone_left_timeout": {
-      "timeout": 2
-    },
+    "everyone_left_timeout": 2,
     "in_call_not_recording_timeout": 3600,
     "in_call_recording_timeout": 0,
     "recording_permission_denied_timeout": 30,

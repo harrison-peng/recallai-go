@@ -163,10 +163,10 @@ type Bot struct {
 }
 
 type MeetingURL struct {
-	MeetingID       string  `json:"meeting_id"`
-	MeetingPassword string  `json:"meeting_password"`
-	TK              *string `json:"tk"`
-	Platform        string  `json:"platform"`
+	MeetingID       string  `json:"meeting_id,omitempty"`
+	MeetingPassword string  `json:"meeting_password,omitempty"`
+	TK              *string `json:"tk,omitempty"`
+	Platform        string  `json:"platform,omitempty"`
 }
 
 type RecordingMode string
@@ -179,10 +179,10 @@ const (
 )
 
 type MeetingMetadata struct {
-	Title           string `json:"title"`
-	ZoomMeetingUUID string `json:"zoom_meeting_uuid"`
-	SlackChannelID  string `json:"slack_channel_id"`
-	SlackHuddleID   string `json:"slack_huddle_id"`
+	Title           string `json:"title,omitempty"`
+	ZoomMeetingUUID string `json:"zoom_meeting_uuid,omitempty"`
+	SlackChannelID  string `json:"slack_channel_id,omitempty"`
+	SlackHuddleID   string `json:"slack_huddle_id,omitempty"`
 }
 
 type MeetingParticipant struct {
@@ -255,10 +255,10 @@ type AssemblyAI struct {
 }
 
 type Deepgram struct {
-	Tier            string   `json:"tier"`
-	Model           string   `json:"model"`
-	Version         string   `json:"version"`
-	Language        string   `json:"language"`
+	Tier            string   `json:"tier,omitempty"`
+	Model           string   `json:"model,omitempty"`
+	Version         string   `json:"version,omitempty"`
+	Language        string   `json:"language,omitempty"`
 	Punctuate       bool     `json:"punctuate"`
 	FillerWords     bool     `json:"filler_words"`
 	Keyterm         []string `json:"keyterm"`
@@ -289,7 +289,7 @@ type Gladia struct {
 }
 
 type GladiaV2 struct {
-	Model                             string   `json:"model"`
+	Model                             string   `json:"model,omitempty"`
 	Endpointing                       float64  `json:"endpointing"`
 	MaximumDurationWithoutEndpointing float64  `json:"maximum_duration_without_endpointing"`
 	Languages                         []string `json:"languages"`
@@ -313,40 +313,40 @@ type GladiaV2 struct {
 }
 
 type Rev struct {
-	Language                  string  `json:"language"`
-	Metadata                  string  `json:"metadata"`
-	CustomVocabularyID        string  `json:"custom_vocabulary_id"`
+	Language                  string  `json:"language,omitempty"`
+	Metadata                  string  `json:"metadata,omitempty"`
+	CustomVocabularyID        string  `json:"custom_vocabulary_id,omitempty"`
 	FilterProfanity           bool    `json:"filter_profanity"`
 	RemoveDisfluencies        bool    `json:"remove_disfluencies"`
 	DeleteAfterSeconds        int     `json:"delete_after_seconds"`
 	DetailedPartials          bool    `json:"detailed_partials"`
 	StartTS                   float64 `json:"start_ts"`
 	MaxSegmentDurationSeconds int     `json:"max_segment_duration_seconds"`
-	Transcriber               string  `json:"transcriber"`
+	Transcriber               string  `json:"transcriber,omitempty"`
 	EnableSpeakerSwitch       bool    `json:"enable_speaker_switch"`
 	SkipPostprocessing        bool    `json:"skip_postprocessing"`
-	Priority                  string  `json:"priority"`
+	Priority                  string  `json:"priority,omitempty"`
 }
 
 type Speechmatics struct {
-	Language        string `json:"language"`
+	Language        string `json:"language,omitempty"`
 	AdditionalVocab []struct {
-		Content    string   `json:"content"`
+		Content    string   `json:"content,omitempty"`
 		SoundsLike []string `json:"sounds_like"`
 	} `json:"additional_vocab"`
-	Diarization              string `json:"diarization"`
+	Diarization              string `json:"diarization,omitempty"`
 	SpeakerDiarizationConfig struct {
 		MaxSpeakers int `json:"max_speakers"`
 	} `json:"speaker_diarization_config"`
 	EnablePartials       bool    `json:"enable_partials"`
 	MaxDelay             float64 `json:"max_delay"`
-	MaxDelayMode         string  `json:"max_delay_mode"`
-	OutputLocale         string  `json:"output_locale"`
+	MaxDelayMode         string  `json:"max_delay_mode,omitempty"`
+	OutputLocale         string  `json:"output_locale,omitempty"`
 	PunctuationOverrides struct {
 		PermittedMarks []string `json:"permitted_marks"`
 		Sensitivity    float64  `json:"sensitivity"`
 	} `json:"punctuation_overrides"`
-	OperatingPoint string `json:"operating_point"`
+	OperatingPoint string `json:"operating_point,omitempty"`
 	EnableEntities bool   `json:"enable_entities"`
 }
 
@@ -371,24 +371,24 @@ type IncludeBotInRecording struct {
 }
 
 type RealTimeTranscription struct {
-	DestinationURL      string `json:"destination_url"`
+	DestinationURL      string `json:"destination_url,omitempty"`
 	PartialResults      bool   `json:"partial_results"`
 	EnhancedDiarization bool   `json:"enhanced_diarization"`
 }
 
 type RealTimeMedia struct {
-	RTMPDestinationURL                         string `json:"rtmp_destination_url"`
-	WebsocketVideoDestinationURL               string `json:"websocket_video_destination_url"`
-	WebsocketAudioDestinationURL               string `json:"websocket_audio_destination_url"`
-	WebsocketSpeakerTimelineDestinationURL     string `json:"websocket_speaker_timeline_destination_url"`
+	RTMPDestinationURL                         string `json:"rtmp_destination_url,omitempty"`
+	WebsocketVideoDestinationURL               string `json:"websocket_video_destination_url,omitempty"`
+	WebsocketAudioDestinationURL               string `json:"websocket_audio_destination_url,omitempty"`
+	WebsocketSpeakerTimelineDestinationURL     string `json:"websocket_speaker_timeline_destination_url,omitempty"`
 	WebsocketSpeakerTimelineExcludeNullSpeaker bool   `json:"websocket_speaker_timeline_exclude_null_speaker"`
-	WebhookCallEventsDestinationURL            string `json:"webhook_call_events_destination_url"`
-	WebhookChatMessagesDestinationURL          string `json:"webhook_chat_messages_destination_url"`
+	WebhookCallEventsDestinationURL            string `json:"webhook_call_events_destination_url,omitempty"`
+	WebhookChatMessagesDestinationURL          string `json:"webhook_chat_messages_destination_url,omitempty"`
 }
 
 type RecordingModeOptions struct {
-	ParticipantVideoWhenScreenshare string `json:"participant_video_when_screenshare"`
-	StartRecordingOn                string `json:"start_recording_on"`
+	ParticipantVideoWhenScreenshare string `json:"participant_video_when_screenshare,omitempty"`
+	StartRecordingOn                string `json:"start_recording_on,omitempty"`
 }
 
 type Chat struct {
@@ -397,21 +397,21 @@ type Chat struct {
 }
 
 type ChatOnBotJoin struct {
-	SendTo  string `json:"send_to"`
-	Message string `json:"message"`
+	SendTo  string `json:"send_to,omitempty"`
+	Message string `json:"message,omitempty"`
 	Pin     bool   `json:"pin"`
 }
 
 type ChatOnParticipantJoin struct {
-	Message     string `json:"message"`
+	Message     string `json:"message,omitempty"`
 	ExcludeHost bool   `json:"exclude_host"`
 }
 
 type Recording struct {
-	ID          string `json:"id"`
-	CreatedAt   string `json:"created_at"`
-	StartedAt   string `json:"started_at"`
-	CompletedAt string `json:"completed_at"`
+	ID          string `json:"id,omitempty"`
+	CreatedAt   string `json:"created_at,omitempty"`
+	StartedAt   string `json:"started_at,omitempty"`
+	CompletedAt string `json:"completed_at,omitempty"`
 }
 
 type OutputMedia struct {
@@ -420,12 +420,12 @@ type OutputMedia struct {
 }
 
 type OutputMediaSetting struct {
-	Kind   string            `json:"kind"`
+	Kind   string            `json:"kind,omitempty"`
 	Config OutputMediaConfig `json:"config"`
 }
 
 type OutputMediaConfig struct {
-	URL string `json:"url"`
+	URL string `json:"url,omitempty"`
 }
 
 type AutomaticVideoOutput struct {
@@ -434,7 +434,7 @@ type AutomaticVideoOutput struct {
 }
 
 type AutomaticVideoOutputConfig struct {
-	Kind string `json:"kind"`
+	Kind string `json:"kind,omitempty"`
 }
 
 type AutomaticAudioOutput struct {
@@ -447,34 +447,45 @@ type InCallRecording struct {
 }
 
 type InCallRecordingData struct {
-	Kind string `json:"kind"`
+	Kind string `json:"kind,omitempty"`
 }
 
 type ReplayOnParticipantJoin struct {
-	DebounceMode     string `json:"debounce_mode"`
+	DebounceMode     string `json:"debounce_mode,omitempty"`
 	DebounceInterval int    `json:"debounce_interval"`
 	DisableAfter     int    `json:"disable_after"`
 }
 
-type AutomaticLeave struct {
-	WaitingRoomTimeout               int                  `json:"waiting_room_timeout"`
-	NooneJoinedTimeout               int                  `json:"noone_joined_timeout"`
+type AutomaticLeaveRequest struct {
+	WaitingRoomTimeout               int                 `json:"waiting_room_timeout,omitempty"`
+	NooneJoinedTimeout               int                 `json:"noone_joined_timeout,omitempty"`
 	EveryoneLeftTimeout              EveryoneLeftTimeout `json:"everyone_left_timeout"`
-	InCallNotRecordingTimeout        int                  `json:"in_call_not_recording_timeout"`
-	InCallRecordingTimeout           int                  `json:"in_call_recording_timeout"`
-	RecordingPermissionDeniedTimeout int                  `json:"recording_permission_denied_timeout"`
-	SilenceDetection                 SilenceDetection     `json:"silence_detection"`
-	BotDetection                     BotDetection         `json:"bot_detection"`
+	InCallNotRecordingTimeout        int                 `json:"in_call_not_recording_timeout,omitempty"`
+	InCallRecordingTimeout           int                 `json:"in_call_recording_timeout,omitempty"`
+	RecordingPermissionDeniedTimeout int                 `json:"recording_permission_denied_timeout,omitempty"`
+	SilenceDetection                 SilenceDetection    `json:"silence_detection"`
+	BotDetection                     BotDetection        `json:"bot_detection"`
+}
+
+type AutomaticLeave struct {
+	WaitingRoomTimeout               int              `json:"waiting_room_timeout,omitempty"`
+	NooneJoinedTimeout               int              `json:"noone_joined_timeout,omitempty"`
+	EveryoneLeftTimeout              int              `json:"everyone_left_timeout"`
+	InCallNotRecordingTimeout        int              `json:"in_call_not_recording_timeout,omitempty"`
+	InCallRecordingTimeout           int              `json:"in_call_recording_timeout,omitempty"`
+	RecordingPermissionDeniedTimeout int              `json:"recording_permission_denied_timeout,omitempty"`
+	SilenceDetection                 SilenceDetection `json:"silence_detection"`
+	BotDetection                     BotDetection     `json:"bot_detection"`
 }
 
 type EveryoneLeftTimeout struct {
-	Timeout       int  `json:"timeout"`
-	ActivateAfter *int `json:"activate_after"`
+	Timeout       int  `json:"timeout,omitempty"`
+	ActivateAfter *int `json:"activate_after,omitempty"`
 }
 
 type SilenceDetection struct {
-	Timeout       int `json:"timeout"`
-	ActivateAfter int `json:"activate_after"`
+	Timeout       int `json:"timeout,omitempty"`
+	ActivateAfter int `json:"activate_after,omitempty"`
 }
 
 type BotDetection struct {
@@ -483,8 +494,8 @@ type BotDetection struct {
 }
 
 type UsingParticipantEvents struct {
-	Timeout       int `json:"timeout"`
-	ActivateAfter int `json:"activate_after"`
+	Timeout       int `json:"timeout,omitempty"`
+	ActivateAfter int `json:"activate_after,omitempty"`
 }
 
 type UsingParticipantNames struct {
@@ -531,36 +542,36 @@ type GoogleMeet struct {
 }
 
 type SlackAuthenticator struct {
-	SlackTeamIntegrationID string `json:"slack_team_integration_id"`
-	TeamDomain             string `json:"team_domain"`
-	LoginEmail             string `json:"login_email"`
-	ProfilePhotoBase64JPG  string `json:"profile_photo_base64_jpg"`
+	SlackTeamIntegrationID string `json:"slack_team_integration_id,omitempty"`
+	TeamDomain             string `json:"team_domain,omitempty"`
+	LoginEmail             string `json:"login_email,omitempty"`
+	ProfilePhotoBase64JPG  string `json:"profile_photo_base64_jpg,omitempty"`
 }
 
 type SlackHuddleObserver struct {
-	SlackTeamIntegrationID    string   `json:"slack_team_integration_id"`
-	TeamDomain                string   `json:"team_domain"`
-	LoginEmail                string   `json:"login_email"`
+	SlackTeamIntegrationID    string   `json:"slack_team_integration_id,omitempty"`
+	TeamDomain                string   `json:"team_domain,omitempty"`
+	LoginEmail                string   `json:"login_email,omitempty"`
 	AutoJoinPublicHuddles     bool     `json:"auto_join_public_huddles"`
 	AskToJoinPrivateHuddles   bool     `json:"ask_to_join_private_huddles"`
-	AskToJoinMessage          string   `json:"ask_to_join_message"`
+	AskToJoinMessage          string   `json:"ask_to_join_message,omitempty"`
 	FilterHuddlesByUserEmails []string `json:"filter_huddles_by_user_emails"`
-	ProfilePhotoBase64JPG     string   `json:"profile_photo_base64_jpg"`
-	HuddleBotAPIToken         string   `json:"huddle_bot_api_token"`
+	ProfilePhotoBase64JPG     string   `json:"profile_photo_base64_jpg,omitempty"`
+	HuddleBotAPIToken         string   `json:"huddle_bot_api_token,omitempty"`
 }
 
 type Message struct {
-	Text      string `json:"text"`
-	CreatedAt string `json:"created_at"`
-	To        string `json:"to"`
+	Text      string `json:"text,omitempty"`
+	CreatedAt string `json:"created_at,omitempty"`
+	To        string `json:"to,omitempty"`
 	Sender    Sender `json:"sender"`
 }
 
 type Sender struct {
 	ID        int       `json:"id"`
-	Name      string    `json:"name"`
+	Name      string    `json:"name,omitempty"`
 	IsHost    bool      `json:"is_host"`
-	Platform  string    `json:"platform"`
+	Platform  string    `json:"platform,omitempty"`
 	ExtraData ExtraData `json:"extra_data"`
 }
 
@@ -571,23 +582,23 @@ type ExtraData struct {
 }
 
 type ZoomData struct {
-	UserGUID   string `json:"user_guid"`
+	UserGUID   string `json:"user_guid,omitempty"`
 	Guest      bool   `json:"guest"`
-	ConfUserID string `json:"conf_user_id"`
+	ConfUserID string `json:"conf_user_id,omitempty"`
 }
 
 type MicrosoftTeamsData struct {
-	ParticipantType string `json:"participant_type"`
-	Role            string `json:"role"`
-	MeetingRole     string `json:"meeting_role"`
-	UserID          string `json:"user_id"`
-	TenantID        string `json:"tenant_id"`
-	ClientVersion   string `json:"client_version"`
+	ParticipantType string `json:"participant_type,omitempty"`
+	Role            string `json:"role,omitempty"`
+	MeetingRole     string `json:"meeting_role,omitempty"`
+	UserID          string `json:"user_id,omitempty"`
+	TenantID        string `json:"tenant_id,omitempty"`
+	ClientVersion   string `json:"client_version,omitempty"`
 }
 
 type SlackData struct {
-	UserID string `json:"user_id"`
-	Email  string `json:"email"`
+	UserID string `json:"user_id,omitempty"`
+	Email  string `json:"email,omitempty"`
 }
 
 // Get a list of all bots
@@ -656,11 +667,11 @@ func convertToStringSlice[T fmt.Stringer](items []T) []string {
 // CreateBotRequest represents the request body for the CreateBot method
 type CreateBotRequest struct {
 	// The url of the meeting. For example, https://zoom.us/j/123?pwd=456. This field will be cleared a few days after the bot has joined a call.
-	MeetingURL string `json:"meeting_url"`
+	MeetingURL string `json:"meeting_url,omitempty"`
 	// The name of the bot that will be displayed in the call.
 	// (Note: Authenticated Google Meet bots will use the Google account name and this field will be ignored.)
 	// The string length should be ≤ 100. Defaults to "Meeting Notetaker".
-	BotName string `json:"bot_name" validate:"max=100,default=Meeting Notetaker"`
+	BotName string `json:"bot_name,omitempty" validate:"max=100,default=Meeting Notetaker"`
 	// The time at which the bot will join the call, formatted in ISO 8601.
 	// This field can only be read from scheduled bots that have not yet joined a call.
 	// Once a bot has joined a call, its join_at will be cleared.
@@ -688,7 +699,7 @@ type CreateBotRequest struct {
 	// (Note: Chat functionality is only supported for Zoom, Google Meet, and Microsoft Teams currently.)
 	Chat *Chat `json:"chat,omitempty"`
 	// (BETA) Settings for the bot to automatically leave the meeting.
-	AutomaticLeave *AutomaticLeave `json:"automatic_leave,omitempty"`
+	AutomaticLeave *AutomaticLeaveRequest `json:"automatic_leave,omitempty"`
 	// Configure bot variants per meeting platforms, e.g. {"zoom": "web_4_core"}.
 	Variant *Variant `json:"variants,omitempty"`
 	// Zoom specific parameters
