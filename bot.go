@@ -456,17 +456,6 @@ type ReplayOnParticipantJoin struct {
 	DisableAfter     int    `json:"disable_after"`
 }
 
-type AutomaticLeaveRequest struct {
-	WaitingRoomTimeout               int                 `json:"waiting_room_timeout,omitempty"`
-	NooneJoinedTimeout               int                 `json:"noone_joined_timeout,omitempty"`
-	EveryoneLeftTimeout              EveryoneLeftTimeout `json:"everyone_left_timeout"`
-	InCallNotRecordingTimeout        int                 `json:"in_call_not_recording_timeout,omitempty"`
-	InCallRecordingTimeout           int                 `json:"in_call_recording_timeout,omitempty"`
-	RecordingPermissionDeniedTimeout int                 `json:"recording_permission_denied_timeout,omitempty"`
-	SilenceDetection                 SilenceDetection    `json:"silence_detection"`
-	BotDetection                     BotDetection        `json:"bot_detection"`
-}
-
 type AutomaticLeave struct {
 	WaitingRoomTimeout               int              `json:"waiting_room_timeout,omitempty"`
 	NooneJoinedTimeout               int              `json:"noone_joined_timeout,omitempty"`
@@ -478,6 +467,8 @@ type AutomaticLeave struct {
 	BotDetection                     BotDetection     `json:"bot_detection"`
 }
 
+// EveryoneLeftTimeout represents the timeout configuration for when all participants leave the call.
+// This struct is currently deprecated and not used in the current API version.
 type EveryoneLeftTimeout struct {
 	Timeout       int  `json:"timeout,omitempty"`
 	ActivateAfter *int `json:"activate_after,omitempty"`
@@ -699,7 +690,7 @@ type CreateBotRequest struct {
 	// (Note: Chat functionality is only supported for Zoom, Google Meet, and Microsoft Teams currently.)
 	Chat *Chat `json:"chat,omitempty"`
 	// (BETA) Settings for the bot to automatically leave the meeting.
-	AutomaticLeave *AutomaticLeaveRequest `json:"automatic_leave,omitempty"`
+	AutomaticLeave *AutomaticLeave `json:"automatic_leave,omitempty"`
 	// Configure bot variants per meeting platforms, e.g. {"zoom": "web_4_core"}.
 	Variant *Variant `json:"variants,omitempty"`
 	// Zoom specific parameters
